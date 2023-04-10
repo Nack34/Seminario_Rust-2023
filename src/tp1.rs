@@ -1,34 +1,11 @@
-
-use std::io::stdin;
-use std::str::FromStr;
-fn ingresar_str<'a>(nombre: &'a mut  String) -> &'a str {
-    stdin().read_line(nombre).expect("Error al leer el nombre.");
-    let y: &str = &nombre.trim();
-    println!("{}",y);
-    return y
-}
-fn ingresar_nro_i32() -> i32 {
-    let mut nombre = String::new();
-    stdin().read_line(&mut nombre).expect("Error al leer el nombre.");
-    let y: i32 = i32::from_str(&nombre.trim()).unwrap();
-    println!("{}",y);
-    return y
-}
-fn ingresar_bool() -> bool {
-    let mut nombre = String::new();
-    stdin().read_line(&mut nombre).expect("Error al leer el nombre.");
-    let y: bool = bool::from_str(&nombre.trim()).unwrap();
-    println!("{}",y);
-    return y
-}
-
+use crate::teclado;
 /*1- Escribir un programa que defina una variable de tipo flotante con algún valor, y luego 
 permita al usuario ingresar un número decimal por teclado para multiplicar, dividir, sumar y 
 restar su valor. Se deben imprimir los resultados. 
 */
 pub fn ej1() {
     let x = 3.0;
-    let y = ingresar_nro_i32();
+    let y = teclado::ingresar_nro_i32();
     println!("Los nros son: {}, {}",x,y);
     println!("Su multiplicacion da: {}",x*(y as f64));
     println!("Su divicion da: {}",x/(y as f64));
@@ -51,7 +28,7 @@ and y or. Se deben imprimir ambos resultados.
  */
 pub fn ej3(){
     let b = false;
-    let c = ingresar_bool();
+    let c = teclado::ingresar_bool();
     println!("{}",b && c) ;
     println!("{}",b || c) ;
 }
@@ -71,7 +48,7 @@ cadena en mayúsculas.
 pub fn ej5(){
     let mut cadena:String= "Hola ".to_string();
     let mut nombre = String::new();
-    cadena += ingresar_str(&mut nombre); 
+    cadena += teclado::ingresar_str(&mut nombre); 
     println!("{}",cadena.as_str().to_uppercase());
 }
 
@@ -81,7 +58,7 @@ programa debe imprimir el valor del número elevado al cuadrado.
  */
 pub fn ej6(){
     let x: u32 = 5;
-    let x = (x as i32) + ingresar_nro_i32();
+    let x = (x as i32) + teclado::ingresar_nro_i32();
 
     println!("{}",x.pow(2))
 }
@@ -96,7 +73,7 @@ pub fn ej7(){
         println!("{}",x);
     }
 
-    let constante = ingresar_nro_i32();
+    let constante = teclado::ingresar_nro_i32();
 
     for i in 1..(array.len()) {
         array[i] *= constante;
@@ -117,7 +94,7 @@ pub fn ej8(){
     let char_vec: Vec<char> = cadena.chars().collect();
 
     let mut caracter_buscado:String = "".to_string();
-    let caracter_buscado: Vec<char> = (ingresar_str(&mut caracter_buscado)).chars().collect();
+    let caracter_buscado: Vec<char> = (teclado::ingresar_str(&mut caracter_buscado)).chars().collect();
     let caracter_buscado = caracter_buscado[0];
 
     let mut contador =0;
@@ -167,9 +144,9 @@ pub fn ej11(){
                             "ee"];
 
     let mut str_buscado = "".to_string();
-    let str_buscado = ingresar_str(&mut str_buscado);
+    let str_buscado = teclado::ingresar_str(&mut str_buscado);
     for x in array{
-        if (str_buscado == x){
+        if str_buscado == x{
             println!("{}",str_buscado);
         }
     }
