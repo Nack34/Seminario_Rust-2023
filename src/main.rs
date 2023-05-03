@@ -1,10 +1,26 @@
+use tp3::Auto;
+
 mod teclado;
 
 mod tp1;
 mod tp2;
 mod test_tp2;
+mod tp3;
 fn main() {
-   test_tp2::test_ej6();
+
+   let a:tp3::Auto = tp3::Auto::new("auto".to_string(),  "mo".to_string(), 40, 50.0, tp3::Color::Amarillo);
+   let mut autos:Vec<tp3::Auto> = Vec::new();
+   autos.push(a);
+   let c = tp3::ConcesionarioAuto::new("aa".to_string(), "bb".to_string(), 5, autos);
+
+   let a:tp3::Auto = tp3::Auto::new("auto".to_string(),  "mo".to_string(), 40, 50.0, tp3::Color::Amarillo);
+   let j = c.buscar_auto(&a);
+
+
+   let a:tp3::Auto = tp3::Auto::new("auto".to_string(),  "mo".to_string(), 40, 50.0, tp3::Color::Amarillo);
+   let j = c.buscar_auto(&a);
+
+   println!("{:#?}",j);
 }
 
 /* -------------------------------------- DUDAS: ------------------------------------------- 
