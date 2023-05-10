@@ -131,8 +131,19 @@ impl Fecha{
             self.dia = self.max_dia(self.mes);
         }
     } 
-    pub fn es_mayor(&self, una_fecha:Fecha) -> bool{
+    pub fn es_mayor(&self, una_fecha:&Self) -> bool{
         self.anio>una_fecha.anio || self.mes>una_fecha.mes || self.dia>una_fecha.dia 
+    }
+    // metodos auxiliares para punto 10
+    pub fn es_igual(&self, otro:&Self) -> bool{
+        self.dia == otro.dia &&
+        self.mes == otro.mes &&
+        self.anio == otro.anio 
+    }
+    pub fn es_proxima(&self, otro:&Self) -> bool{
+        self.anio - otro.anio > 0 && 
+        self.mes - otro.mes > 0 &&
+        self.dia - otro.dia > 7 
     }
 }
 
@@ -415,7 +426,7 @@ impl Playlist {
     pub fn buscar_cancion (&self,titulo:String) -> Option<&Cancion>{
         let mut cancion_buscada:Option<&Cancion> = None;
         for cancion in &self.canciones {
-            if (cancion.titulo == titulo) {
+            if cancion.titulo == titulo {
                 cancion_buscada = Some(&cancion)
             }
         }
@@ -424,7 +435,7 @@ impl Playlist {
     pub fn canciones_genero (&self,genero:Genero) -> Vec<&Cancion>{
         let mut canciones:Vec<&Cancion> = Vec::new();
         for cancion in &self.canciones {
-            if (cancion.genero == genero) {
+            if cancion.genero == genero {
                 canciones.push(&cancion);
             }
         }
@@ -433,7 +444,7 @@ impl Playlist {
     pub fn canciones_artista (&self,artista:String) -> Vec<&Cancion>{
         let mut canciones:Vec<&Cancion> = Vec::new();
         for cancion in &self.canciones {
-            if (cancion.artista == artista) {
+            if cancion.artista == artista {
                 canciones.push(&cancion);
             }
         }
@@ -470,11 +481,366 @@ teléfono.
 ➔ eliminar una determinada atención.
 Nota: para la fecha utilice lo implementado en el punto 3.
  */
+pub struct Duenio{
+    nombre:String,
+    direccion:String,
+    teléfono:u32,
+}
+impl Duenio {
+    pub fn new( nombre:String, direccion:String, teléfono:u32,) -> Duenio {
+        Duenio { nombre, direccion, teléfono}
+    }
+}
+#[derive(PartialEq)]
+pub enum Animal {
+    Perro, Gato, Caballo, Otros
+}
+pub struct Mascota{
+    nombre:String,
+    edad:u32,
+    tipo_de_animal:Animal,
+    duenio:Duenio,
+}
+impl Mascota {
+    pub fn new( nombre:String, edad:u32, tipo_de_animal:Animal, duenio:Duenio) -> Mascota {
+        Mascota {nombre, edad, tipo_de_animal, duenio}
+    }
+}
+pub struct AtencionRealizada{
+    mascota:Mascota,
+    diagnostico_final:String,
+    tratamiento:String,
+    fecha_proxima_visita:Option<Fecha>,
+}
+impl AtencionRealizada {
+    pub fn new( mascota:Mascota, diagnostico_final:String, tratamiento:String, fecha_proxima_visita:Option<Fecha>) -> AtencionRealizada {
+        AtencionRealizada {mascota, diagnostico_final, tratamiento, fecha_proxima_visita}
+    }
+    pub fn soy_yo(&self, nombre_mascota:String,nombre_duenio:String,telefono:u32) -> bool{
+        self.mascota.nombre == nombre_mascota && 
+        self.mascota.duenio.nombre == nombre_duenio &&
+        self.mascota.duenio.teléfono == telefono 
+    }
+    pub fn modificar_fecha(&mut self, fecha_proxima_visita:Option<Fecha>) {
+        self.fecha_proxima_visita = fecha_proxima_visita;
+    }
+}
+use std::collections::VecDeque;
+pub struct Veterinaria{
+    nombre:String,
+    direccion:String,
+    id:i32,
+    proximas_atenciones:VecDeque<Mascota>,
+    registro_atenciones:LinkedList<AtencionRealizada>,
+}
+impl Veterinaria {
+    pub fn new( nombre:String, direccion:String, id:i32, proximas_atenciones:VecDeque<Mascota>, registro_atenciones:LinkedList<AtencionRealizada>) -> Veterinaria {
+        Veterinaria {nombre, direccion, id, proximas_atenciones, registro_atenciones}
+    }
+    pub fn agregar_mascota_al_final(&mut self, mascota: Mascota) {
+        self.proximas_atenciones.push_back(mascota);
+    }
+    pub fn agregar_mascota_al_inicio(&mut self, mascota: Mascota) {
+        self.proximas_atenciones.push_front(mascota);
+    }
+    pub fn atender_mascota(&mut self) -> Mascota{
+        let Some(mascota) = self.proximas_atenciones.pop_front() else { todo!() };
+        mascota
+    }
+    pub fn eliminar_mascota(&mut self, mascota: Mascota)  {
+        let mut index = 0;
+        for m in &mut self.proximas_atenciones{
+            if m.nombre == mascota.nombre && m.tipo_de_animal == mascota.tipo_de_animal{
+                break;
+            }
+            index+=1;
+        } 
+        // if (index == self.proximas_atenciones.len() { panic })
+        self.proximas_atenciones.remove(index);
+    }
+    pub fn mascota_atendida(&mut self, atencion_realizada: AtencionRealizada){
+        self.registro_atenciones.push_front(atencion_realizada);
+    }
+    pub fn buscar_atencion(&mut self, nombre_mascota:String,nombre_duenio:String,telefono:u32) -> &AtencionRealizada {
+        let mut res:Option<&AtencionRealizada> = None;
+        for atencion in &self.registro_atenciones{
+            if atencion.soy_yo(nombre_mascota.clone(),nombre_duenio.clone(),telefono){
+                    res = Some(atencion);
+                    break;
+            }
+        }
+        let Some(r) = res else { todo!() };
+        r
+    }
+    pub fn modificar_atencion(&mut self, atencionRealizada:AtencionRealizada) {
+        for atencion in &mut self.registro_atenciones{
+            if atencion.soy_yo(atencionRealizada.mascota.nombre.clone(),
+                atencionRealizada.mascota.duenio.nombre.clone(),
+                atencionRealizada.mascota.duenio.teléfono){
+                    *atencion = atencionRealizada;
+                    break;
+            }
+        }
+    }
+    pub fn eliminar_atencion(&mut self, atencionRealizada:AtencionRealizada) {
+        let mut index = 0;
+        for atencion in &mut self.registro_atenciones{
+            if atencion.soy_yo(atencionRealizada.mascota.nombre.clone(),
+                atencionRealizada.mascota.duenio.nombre.clone(),
+                atencionRealizada.mascota.duenio.teléfono){
+                    break;
+            }
+            index+=1;
+        }
 
-//  structs: veterinaria, mascota, atencion
+        // if (index == self.proximas_atenciones.len() { panic })
 
+        let mut split_list = self.registro_atenciones.split_off(index);  // -------------------- IDK si funca, lo saque de internet xd
+        split_list.pop_front();
+        self.registro_atenciones.append(&mut split_list);
+    }
+}
 
+/* 10-Para una biblioteca se desea implementar un sistema de préstamos de libros. De la
+biblioteca se conoce el nombre y la dirección, las copias de los libros a disposición para
+prestar y los préstamos efectuados. Los libros a disposición es un registro donde se indica
+la cantidad de ejemplares que tiene a disposición para prestar de determinado libro. De
+cada libro se conoce el título, autor, número de páginas, género(novela, infantil, técnico,
+otros). Para registrar un préstamo se requiere el libro, el cliente, la fecha de vencimiento del
+préstamo, la fecha de devolución y el estado que puede ser devuelto o en préstamo. Del
+cliente se conoce el nombre, teléfono y dirección de correo electrónico.
 
+Implemente los métodos necesarios para realizar las siguientes acciones:
+➔ obtener cantidad de copias: dado un determinado libro retorna el retorna la
+cantidad de copias a disposición que hay para prestar de dicho libro.
+➔ decrementar cantidad de copias a disposición; dado un libro decrementa en 1
+la cantidad de copias de libros a disposición para prestar.
+➔ incrementar cantidad de copias a disposición: dado un libro incremente en 1
+la cantidad de copias del libro a disposición para ser prestado.
+➔ contar préstamos de un cliente: devuelve la cantidad de préstamos en estado
+“en préstamo” de un determinado cliente.
+➔ ver la cantidad disponible de un determinado libro: retorna la cantidad de
+libros disponibles del registro de “copias a disposición” de un determinado
+libro.
+➔ realizar un préstamo de un libro para un cliente: crea un préstamo de un libro
+para un determinado cliente cumpliendo con lo siguiente
+◆ el cliente no tenga más de 5 préstamos en el estado “en préstamo”
+◆ haya al menos una copia disponible en el registro de copias a
+disposición.
+De ser así descuenta 1 en el registro de “copias a disposición” y
+retorna true, si no cumple con alguna de las condiciones retorna false.
+➔ ver préstamos a vencer el los próximos días: retorna una lista de préstamos a
+vencer el los próximos días, el valor de días es pasado por parámetro.
+➔ ver los préstamos vencidos: retorna una lista de préstamos en el estado “en
+préstamos” donde la fecha de vencimiento es menor a la fecha actual.
+➔ buscar préstamo: dado un libro y un cliente busca un préstamo y lo retorna si
+existe.
+➔ devolver libro: dado un libro y un cliente se busca el préstamo y se cambia al
+estado “devuelto”, se registra la fecha de devolución y se incrementa la
+cantidad de libros en 1 del libro devuelto en el registro de copias a
+disposición.
+Nota: para la fecha utilice lo implementado en el punto 3. */
 
+pub struct Biblioteca<'a>{
+    nombre:String,
+    direccion:String, 
+    libros_a_disposición:LibrosADisposicion,
+    prestamos_efectuados:PrestamosEfectuados<'a>
+}
+pub struct LibrosADisposicion{
+    libros_a_disposición:Vec<LibroADisposicion>
+}
+pub struct LibroADisposicion{
+    libro: Libro,
+    cant_ejemplares:u32
+}
+#[derive(PartialEq)]
+pub enum GeneroDeLibro{ Novela, Infantil, Tecnico, Otros }
+pub struct Libro{
+    título: String, 
+    autor: String, 
+    nro_paginas: u32, 
+    genero: GeneroDeLibro
+}
+pub struct PrestamosEfectuados<'a>{
+    prestamos:Vec<Prestamo<'a>>
+}
+#[derive(PartialEq)]
+pub enum Estado{Devuelto, EnPrestamo}
+pub struct Prestamo<'a> {
+    libro:&'a Libro,
+    cliente: Cliente,
+    fecha_vencimiento:Fecha,
+    fecha_devolución:Option<Fecha>,
+    estado:Estado
+}
+pub struct Cliente{
+    nombre:String, 
+    telefono: String,
+    email:String
+}
 
+// ----------------------------- Constructores
+impl <'a> Biblioteca<'a>{
+    pub fn new ( nombre:String, direccion:String, libros_a_disposición:LibrosADisposicion, prestamos_efectuados:PrestamosEfectuados<'a>) -> Biblioteca{
+        Biblioteca{ nombre, direccion, libros_a_disposición, prestamos_efectuados }
+    }
+}
+impl LibrosADisposicion{
+    pub fn new ( libros_a_disposición: Vec<LibroADisposicion>) -> LibrosADisposicion{
+        LibrosADisposicion{ libros_a_disposición }
+    }
+}
+impl LibroADisposicion{
+    pub fn new ( libro:Libro, cant_ejemplares:u32) -> LibroADisposicion{
+        LibroADisposicion{ libro, cant_ejemplares }
+    }
+}
+impl Libro{
+    pub fn new ( título:String, autor:String, nro_paginas:u32, genero:GeneroDeLibro) -> Libro{
+        Libro{ título, autor, nro_paginas, genero }
+    }
+}
+impl <'a>PrestamosEfectuados<'a>{
+    pub fn new ( prestamos: Vec<Prestamo<'a>>) -> PrestamosEfectuados{
+        PrestamosEfectuados{ prestamos }
+    }
+}
+impl <'a>Prestamo<'a>{
+    pub fn new ( libro:&'a Libro, cliente:Cliente, fecha_vencimiento:Fecha, fecha_devolución:Option<Fecha>,estado:Estado) -> Prestamo{
+        Prestamo{ libro, cliente, fecha_vencimiento, fecha_devolución , estado}
+    }
+}
+impl Cliente{
+    pub fn new ( nombre:String, telefono:String, email:String) -> Cliente{
+        Cliente{ nombre, telefono, email}
+    }
+}
 
+// ----------------------------------- metodos pedidos por el enunciado
+impl <'a> Biblioteca<'a>{
+    pub fn buscar_libro_a_disposicion(&mut self, libro:&Libro) -> Option<&mut LibroADisposicion>{
+        self.libros_a_disposición.buscar(libro)
+    }
+    pub fn cant_ejemplares (&mut self, libro:&Libro) -> u32{
+        let res;
+        if let Some(l) = self.buscar_libro_a_disposicion(libro){
+            res = l.cant_ejemplares;
+        } else {res = 0;}
+        res
+    }
+    pub fn libro_prestado(&mut self, libro:&Libro){
+        if let Some(l) = self.buscar_libro_a_disposicion(libro){
+            l.cant_ejemplares -= 1;
+        }
+    }
+    pub fn libro_devuelto(&mut self, libro:&Libro){
+        if let Some(l) = self.buscar_libro_a_disposicion(libro){
+            l.cant_ejemplares += 1;
+        }
+    }
+    pub fn cant_prestamos_de(&self, cliente:&Cliente) -> u32{
+        self.prestamos_efectuados.cant_prestamos_de(cliente)
+    }
+    pub fn cant_ejemplares_disponibles(&self, libro:&Libro){
+        // no es lo mismo que cant_ejemplares?
+    }
+    pub fn realizar_prestamos(&mut self, libro:&'a Libro, cliente:Cliente, fecha_vencimiento:Fecha, fecha_devolución:Option<Fecha>) -> bool{
+        let mut res = true;
+        if self.cant_prestamos_de(&cliente)<=5 && self.cant_ejemplares(libro)>=1 {
+            self.prestamos_efectuados.agregar(Prestamo::new(libro, cliente, fecha_vencimiento, fecha_devolución, Estado::EnPrestamo));
+            self.libro_prestado(libro);
+            res = true;
+        }
+        res
+    }
+    pub fn prestamos_a_vencer_en_los_proximos_dias(&self, hoy:Fecha) -> LinkedList<&Prestamo<'a>>{
+        self.prestamos_efectuados.prestamos_a_vencer_en_los_proximos_dias(&hoy)
+    }
+    pub fn prestamos_a_vencidos(&self, hoy:Fecha) -> LinkedList<&Prestamo>{
+        self.prestamos_efectuados.prestamos_a_vencidos(&hoy)
+    }
+    pub fn buscar_prestamo(&mut self, libro:&Libro, cliente:&Cliente) -> Option<&mut Prestamo<'a>>{
+        self.prestamos_efectuados.buscar_prestamo(libro,cliente)
+    }
+    pub fn devolver_libro(&mut self, libro:&Libro, cliente:&Cliente, hoy:Fecha){
+        let Some(p) = self.buscar_prestamo(libro, cliente) else {todo!()}; // panic
+        p.registrar_devolucion(hoy);
+        self.libro_devuelto(libro);
+    }
+}
+
+// ------------------------------------------ metodos auxiliares
+impl LibrosADisposicion{
+    pub fn buscar (&mut self, libro:&Libro) -> Option<&mut LibroADisposicion>{
+        let mut res = None;
+        for l in &mut self.libros_a_disposición {
+            if l.libro.es_igual(libro) {res = Some(l)}; 
+        }
+        res
+    }
+}
+impl Libro{
+    pub fn es_igual (&self, otro:&Self) -> bool{
+        self.título==otro.título && self.autor==otro.autor && self.nro_paginas==otro.nro_paginas && self.genero == otro.genero
+    }
+}
+impl <'a>PrestamosEfectuados<'a>{
+    pub fn cant_prestamos_de(&self, cliente:&Cliente) -> u32{
+        let mut res = 0;
+        for p in &self.prestamos {
+            if p.estado == Estado::EnPrestamo && p.cliente.es_igual(&cliente) {res += 1}; 
+        }
+        res
+    }
+    pub fn agregar(&mut self, prestamo:Prestamo<'a>){
+        self.prestamos.push(prestamo);
+    }
+    pub fn prestamos_a_vencer_en_los_proximos_dias(&self, hoy:&Fecha) -> LinkedList<&Prestamo <'a>>{
+        let mut res:LinkedList<&Prestamo> = LinkedList::new();
+        for p in &self.prestamos {
+            if p.esta_proximo_a_vencer(hoy) {res.push_front(p)}
+        }
+        res
+    }
+    pub fn prestamos_a_vencidos(&self, hoy:&Fecha) -> LinkedList<&Prestamo <'a>>{
+        let mut res:LinkedList<&Prestamo> = LinkedList::new();
+        for p in &self.prestamos {
+            if p.estado == Estado::EnPrestamo && p.esta_vencido(hoy) {res.push_front(p)}
+        }
+        res
+    }
+    pub fn buscar_prestamo(&mut self, libro:&Libro, cliente:&Cliente) -> Option<&mut Prestamo<'a>>{
+        let mut res = None;
+        for p in &mut self.prestamos {
+            if p.es_igual(libro,cliente){ res = Some(p)}
+        }
+        res
+    }
+}
+impl <'a>Prestamo<'a>{
+    /*pub fn es_igual (&self, otro:&Self) -> bool{
+        self.libro.es_igual(otro.libro) && self.cliente.es_igual(&otro.cliente) && 
+        self.fecha_vencimiento.es_igual(&otro.fecha_vencimiento) && 
+        self.fecha_devolución.es_igual(&otro.fecha_devolución) && 
+        self.estado == otro.estado
+    }*/
+    pub fn es_igual (&self, libro:&Libro, cliente:&Cliente) -> bool{
+        self.libro.es_igual(libro) && self.cliente.es_igual(cliente) 
+    }
+    pub fn esta_proximo_a_vencer(&self, hoy:&Fecha) -> bool{
+        self.fecha_vencimiento.es_proxima(hoy)
+    }
+    pub fn esta_vencido(&self, hoy:&Fecha) -> bool{
+        hoy.es_mayor(&self.fecha_vencimiento)
+    }
+    pub fn registrar_devolucion(&mut self, hoy:Fecha){
+        self.fecha_devolución = Some(hoy);
+        self.estado = Estado::Devuelto;
+    }
+}
+impl Cliente{
+    pub fn es_igual (&self, otro:&Self) -> bool{
+        self.nombre==otro.nombre && self.telefono==otro.telefono && self.email==otro.email
+    }
+}
