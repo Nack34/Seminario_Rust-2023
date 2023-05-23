@@ -132,7 +132,9 @@ impl Fecha{
         }
     } 
     pub fn es_mayor(&self, una_fecha:&Self) -> bool{
-        self.anio>una_fecha.anio || self.mes>una_fecha.mes || self.dia>una_fecha.dia 
+        if self.anio!=una_fecha.anio {return self.anio>una_fecha.anio} 
+        if self.mes!=una_fecha.mes {return self.mes>una_fecha.mes} 
+        return self.dia>una_fecha.dia
     }
     // metodos auxiliares para punto 10
     pub fn es_igual(&self, otro:&Self) -> bool{
@@ -141,9 +143,9 @@ impl Fecha{
         self.anio == otro.anio 
     }
     pub fn es_proxima(&self, otro:&Self) -> bool{
-        self.anio - otro.anio > 0 && 
-        self.mes - otro.mes > 0 &&
-        self.dia - otro.dia > 7 
+        if self.anio!=otro.anio {return self.anio>otro.anio} 
+        if self.mes!=otro.mes {return self.mes>otro.mes} 
+        return self.dia >= otro.dia || otro.dia - self.dia <= 7
     }
 }
 
@@ -156,7 +158,7 @@ isósceles o escaleno.
 ➢ calcular_perimetro: calcula el perímetro y lo retorna.
  */
 pub struct Triangulo{
-    l1: f32,
+    l1: f32, // se toma a l1 como la base
     l2: f32,
     l3: f32,
 }
@@ -164,9 +166,14 @@ impl Triangulo{
     pub fn new (l1: f32, l2: f32, l3: f32,) -> Triangulo{
         Triangulo { l1, l2, l3 }
     }
+    pub fn soy_valido(&self) ->bool {
+        self.l1>=0.0 && self.l2>=0.0 && self.l3>=0.0
+    } 
     pub fn determinar_tipo(&self) -> String{
-        let mut lados_iguales = 0;
+        if !self.soy_valido() {/*tirar un panic*/}
         
+        let mut lados_iguales = 0;
+
         if self.l1==self.l2 { lados_iguales+=1; } 
         if self.l2 == self.l3 { lados_iguales+=1; }
         if self.l1 == self.l3 { lados_iguales+=1; }
@@ -180,17 +187,25 @@ impl Triangulo{
     }
     // h = (2 / a)​ * RAIZ(S(S−a)(S−b)(S−c)​), siendo S = (a+b+c)/2
     pub fn calcular_area(&self) -> f32{
-        let h = self.altura();  // se toma a l1 como la base
-        self.l1*h
+        if !self.soy_valido() {/*tirar un panic*/}
+        
+        let h = self.altura();  
+        self.l1*h/2.0
     }
     pub fn semiperimetro (&self) -> f32{
+        if !self.soy_valido() {/*tirar un panic*/}
+        
         (self.l1+self.l2+self.l3)/2.0
     }
-    pub fn altura(&self) -> f32 { // se toma a l1 como la base
+    pub fn altura(&self) -> f32 { 
+        if !self.soy_valido() {/*tirar un panic*/}
+
         let s = self.semiperimetro();
         (2.0 / self.l1) * (s*(s-self.l1)*(s-self.l2)*(s-self.l3)).sqrt()
     }
     pub fn calcular_perimetro(&self) -> f32{
+        if !self.soy_valido() {/*tirar un panic*/}
+
         self.l1+self.l2+self.l3
     }
 }
@@ -222,8 +237,11 @@ impl Producto{
     pub fn aplicar_descuento(&self, porcentaje_de_descuento:f32) -> f32{
         self.precio_bruto*porcentaje_de_descuento/100.0
     }
-    pub fn calcular_precio_total(&self, porcentaje_de_impuestos:f32, porcentaje_de_descuento:f32) -> f32{ // entiendo por "opcional" que pasan 0
-        self.precio_bruto - self.aplicar_descuento(porcentaje_de_descuento) + self.calcular_impuestos(porcentaje_de_impuestos)
+    pub fn calcular_precio_total(&self, porcentaje_de_impuestos:Option<f32>, porcentaje_de_descuento:Option<f32>) -> f32{ 
+        let mut res = self.precio_bruto;
+        if let Some(porcentaje_de_descuento) =  porcentaje_de_descuento { res-= self.aplicar_descuento(porcentaje_de_descuento)}
+        if let Some(porcentaje_de_impuestos) = porcentaje_de_impuestos {res += self.calcular_impuestos(porcentaje_de_impuestos)}
+        res
     }
 }
 
@@ -322,7 +340,7 @@ impl ConcesionarioAuto{
         ConcesionarioAuto { nombre, direccion, capacidad_maxima_autos, autos }
     }
     pub fn agregar_auto(&mut self,auto:Auto) -> bool{
-        if self.autos.len() as u32>self.capacidad_maxima_autos {false}
+        if self.autos.len() as u32>=self.capacidad_maxima_autos {false}
         else{
             self.autos.push(auto);
             true
@@ -334,7 +352,7 @@ impl ConcesionarioAuto{
     pub fn buscar_auto(&self, auto:&Auto) -> Option<&Auto>{
         let mut auto_buscado:Option<&Auto>=None;
         for a in &self.autos {
-            if auto.marca == a.marca && auto.modelo == a.modelo {
+            if auto.es_igual(a) {
                 auto_buscado = Some (&a);
                 break;
             }
@@ -342,7 +360,6 @@ impl ConcesionarioAuto{
         auto_buscado
     }
 }
-#[derive(PartialEq)]
 #[derive(Debug)]
 pub enum Color{
     Rojo, Verde, Azul, Amarillo, Blanco, Negro
@@ -361,22 +378,45 @@ impl Auto{
         Auto { marca,  modelo, anio, precio_bruto, color }
     }
     pub fn calcular_precio(&self) -> f32{
+        let es_de_color_primario = self.es_de_color_primario(); 
         self.precio_bruto
-        + self.precio_bruto*25.0/100.0*self.es_de_color_primario()as i32 as f32 
-        - self.precio_bruto*10.0/100.0*!self.es_de_color_primario()as i32 as f32 
+        + self.precio_bruto*25.0/100.0*es_de_color_primario as i32 as f32 
+        - self.precio_bruto*10.0/100.0*!es_de_color_primario as i32 as f32 
         + self.precio_bruto*15.0/100.0*self.es_BMW()as i32 as f32 
         - self.precio_bruto*5.0/100.0*self.anio_menor_2000()as i32 as f32 
     }
     pub fn es_de_color_primario(&self) -> bool{
-        self.color == Color::Rojo || 
-        self.color == Color::Amarillo || 
-        self.color == Color::Azul 
+        Self::es_color_rojo(&self.color) || 
+        Self::es_color_amarillo(&self.color) || 
+        Self::es_color_azul(&self.color) 
     }
     pub fn es_BMW(&self) -> bool{
         self.marca == "BMW".to_string()
     }
     pub fn anio_menor_2000(&self) -> bool{
         self.anio < 2000
+    }
+    // metodos auxiliares
+    pub fn es_igual(&self, otro:&Self) ->bool{
+        self.marca == otro.marca && self.modelo == otro.modelo
+    }
+    pub fn es_color_rojo(color:&Color) -> bool{
+        match color{
+            Color::Rojo => true,
+            _ => false
+        }
+    }
+    pub fn es_color_amarillo(color:&Color) -> bool{
+        match color{
+            Color::Amarillo => true,
+            _ => false
+        }
+    }
+    pub fn es_color_azul(color:&Color) -> bool{
+        match color{
+            Color::Azul => true,
+            _ => false
+        }
     }
 }
 
@@ -392,7 +432,6 @@ ella:
 ➔ obtener las canciones de un determinado artista.
 ➔ modificar título de la playlist.
 ➔ eliminar todas las canciones. */
-#[derive(PartialEq)]
 pub enum Genero{
     Rock, Pop, Rap, Jazz, Otros
 }
@@ -405,6 +444,46 @@ impl Cancion {
     pub fn new(titulo:String, artista:String, genero:Genero) -> Cancion {
             Cancion {titulo, artista, genero}
     }
+    pub fn tiene_genero_igual(&self, genero:&Genero) ->bool{
+        match self.genero{
+            Genero::Jazz => Self::es_jazz(genero),
+            Genero::Otros => Self::es_otros(genero),
+            Genero::Pop => Self::es_pop(genero),
+            Genero::Rap => Self::es_rap(genero),
+            Genero::Rock => Self::es_rock(genero)
+        }
+    }
+    pub fn es_rock(genero:&Genero) ->bool{
+        match genero{
+            Genero::Rock => true,
+            _=>false
+        }
+    }
+    pub fn es_rap(genero:&Genero)->bool{
+        match genero{
+            Genero::Rap => true,
+            _=>false
+        }
+    }
+    pub fn es_pop(genero:&Genero)->bool{
+        match genero{
+            Genero::Pop => true,
+            _=>false
+        }
+    }
+    pub fn es_jazz(genero:&Genero)->bool{
+        match genero{
+            Genero::Jazz => true,
+            _=>false
+        }
+    }
+    pub fn es_otros(genero:&Genero)->bool{
+        match genero{
+            Genero::Otros => true,
+            _=>false
+        }
+    }
+
 }
 pub struct Playlist{
     nombre:String,
@@ -435,7 +514,7 @@ impl Playlist {
     pub fn canciones_genero (&self,genero:Genero) -> Vec<&Cancion>{
         let mut canciones:Vec<&Cancion> = Vec::new();
         for cancion in &self.canciones {
-            if cancion.genero == genero {
+            if cancion.tiene_genero_igual(&genero) {
                 canciones.push(&cancion);
             }
         }
@@ -453,7 +532,7 @@ impl Playlist {
     pub fn modificar_nombre (&mut self, nombre:String){
         self.nombre = nombre;
     }
-    pub fn vaciar_playlist (&mut self){
+    pub fn nueva_playlist (&mut self){
         self.canciones = Vec::new();
     }
 }
@@ -487,33 +566,67 @@ pub struct Duenio{
     teléfono:u32,
 }
 impl Duenio {
-    pub fn new( nombre:String, direccion:String, teléfono:u32,) -> Duenio {
+    pub fn new( nombre:String, direccion:String, teléfono:u32) -> Duenio {
         Duenio { nombre, direccion, teléfono}
     }
 }
-#[derive(PartialEq)]
 pub enum Animal {
     Perro, Gato, Caballo, Otros
 }
-pub struct Mascota{
+pub struct Mascota<'a>{
     nombre:String,
     edad:u32,
     tipo_de_animal:Animal,
-    duenio:Duenio,
+    duenio:&'a Duenio,
 }
-impl Mascota {
-    pub fn new( nombre:String, edad:u32, tipo_de_animal:Animal, duenio:Duenio) -> Mascota {
+impl <'a> Mascota <'a> {
+    pub fn new( nombre:String, edad:u32, tipo_de_animal:Animal, duenio:&'a Duenio) -> Mascota<'a> {
         Mascota {nombre, edad, tipo_de_animal, duenio}
     }
+    pub fn es_igual(&self, otro:&Self)-> bool{
+        self.nombre == otro.nombre && Self::animal_igual(&self.tipo_de_animal,&otro.tipo_de_animal)
+    }
+    pub fn animal_igual(animal:&Animal,otro_animal:&Animal)-> bool{
+        match animal{
+            Animal::Caballo => Self::es_caballo(otro_animal),
+            Animal::Gato => Self::es_gato(otro_animal),
+            Animal::Otros => Self::es_otros(otro_animal),
+            Animal::Perro => Self::es_perro(otro_animal)
+        }
+    }
+    pub fn es_perro(otro_animal:&Animal) -> bool{
+        match otro_animal{
+            Animal::Perro => true,
+            _=> false
+        }
+    }
+    pub fn es_otros(otro_animal:&Animal) -> bool{
+        match otro_animal{
+            Animal::Otros => true,
+            _=> false
+        }
+    }
+    pub fn es_gato(otro_animal:&Animal) -> bool{
+        match otro_animal{
+            Animal::Gato => true,
+            _=> false
+        }
+    }
+    pub fn es_caballo(otro_animal:&Animal) -> bool{
+        match otro_animal{
+            Animal::Caballo => true,
+            _=> false
+        }
+    }
 }
-pub struct AtencionRealizada{
-    mascota:Mascota,
+pub struct AtencionRealizada<'a>{
+    mascota:&'a Mascota<'a>,
     diagnostico_final:String,
     tratamiento:String,
     fecha_proxima_visita:Option<Fecha>,
 }
-impl AtencionRealizada {
-    pub fn new( mascota:Mascota, diagnostico_final:String, tratamiento:String, fecha_proxima_visita:Option<Fecha>) -> AtencionRealizada {
+impl <'a>AtencionRealizada <'a>{
+    pub fn new( mascota:&'a Mascota<'a>, diagnostico_final:String, tratamiento:String, fecha_proxima_visita:Option<Fecha>) -> AtencionRealizada<'a> {
         AtencionRealizada {mascota, diagnostico_final, tratamiento, fecha_proxima_visita}
     }
     pub fn soy_yo(&self, nombre_mascota:String,nombre_duenio:String,telefono:u32) -> bool{
@@ -526,31 +639,31 @@ impl AtencionRealizada {
     }
 }
 use std::collections::VecDeque;
-pub struct Veterinaria{
+pub struct Veterinaria<'a>{
     nombre:String,
     direccion:String,
     id:i32,
-    proximas_atenciones:VecDeque<Mascota>,
-    registro_atenciones:LinkedList<AtencionRealizada>,
+    proximas_atenciones:VecDeque<&'a Mascota<'a>>,
+    registro_atenciones:LinkedList<&'a AtencionRealizada<'a>>,
 }
-impl Veterinaria {
-    pub fn new( nombre:String, direccion:String, id:i32, proximas_atenciones:VecDeque<Mascota>, registro_atenciones:LinkedList<AtencionRealizada>) -> Veterinaria {
+impl <'a>Veterinaria<'a> {
+    pub fn new( nombre:String, direccion:String, id:i32, proximas_atenciones:VecDeque<&'a Mascota<'a>>, registro_atenciones:LinkedList<&'a AtencionRealizada<'a>>) -> Veterinaria <'a> {
         Veterinaria {nombre, direccion, id, proximas_atenciones, registro_atenciones}
     }
-    pub fn agregar_mascota_al_final(&mut self, mascota: Mascota) {
+    pub fn agregar_mascota_al_final(&mut self, mascota: &'a Mascota<'a>) {
         self.proximas_atenciones.push_back(mascota);
     }
-    pub fn agregar_mascota_al_inicio(&mut self, mascota: Mascota) {
+    pub fn agregar_mascota_al_inicio(&mut self, mascota: &'a Mascota<'a>) {
         self.proximas_atenciones.push_front(mascota);
     }
-    pub fn atender_mascota(&mut self) -> Mascota{
-        let Some(mascota) = self.proximas_atenciones.pop_front() else { todo!() };
+    pub fn atender_mascota(&mut self) -> &'a Mascota<'a>{
+        let Some(mascota) = self.proximas_atenciones.pop_front() else { todo!() /* tirar panic */};
         mascota
     }
-    pub fn eliminar_mascota(&mut self, mascota: Mascota)  {
+    pub fn eliminar_mascota(&mut self, mascota: &'a Mascota<'a>)  {
         let mut index = 0;
-        for m in &mut self.proximas_atenciones{
-            if m.nombre == mascota.nombre && m.tipo_de_animal == mascota.tipo_de_animal{
+        for m in &self.proximas_atenciones{
+            if m.es_igual(mascota){
                 break;
             }
             index+=1;
@@ -558,36 +671,36 @@ impl Veterinaria {
         // if (index == self.proximas_atenciones.len() { panic })
         self.proximas_atenciones.remove(index);
     }
-    pub fn mascota_atendida(&mut self, atencion_realizada: AtencionRealizada){
+    pub fn mascota_atendida(&mut self, atencion_realizada:  &'a AtencionRealizada<'a>){
         self.registro_atenciones.push_front(atencion_realizada);
     }
-    pub fn buscar_atencion(&mut self, nombre_mascota:String,nombre_duenio:String,telefono:u32) -> &AtencionRealizada {
-        let mut res:Option<&AtencionRealizada> = None;
+    pub fn buscar_atencion(&self, nombre_mascota:String,nombre_duenio:String,telefono:u32) -> &'a AtencionRealizada<'a> {
+        let mut res:Option<&'a AtencionRealizada<'a>> = None;
         for atencion in &self.registro_atenciones{
             if atencion.soy_yo(nombre_mascota.clone(),nombre_duenio.clone(),telefono){
                     res = Some(atencion);
                     break;
             }
         }
-        let Some(r) = res else { todo!() };
+        let Some(r) = res else { todo!() /* tirar panic */ };
         r
     }
-    pub fn modificar_atencion(&mut self, atencionRealizada:AtencionRealizada) {
+    pub fn modificar_atencion(&mut self, atencion_realizada:&'a AtencionRealizada<'a>) {
         for atencion in &mut self.registro_atenciones{
-            if atencion.soy_yo(atencionRealizada.mascota.nombre.clone(),
-                atencionRealizada.mascota.duenio.nombre.clone(),
-                atencionRealizada.mascota.duenio.teléfono){
-                    *atencion = atencionRealizada;
+            if atencion.soy_yo(atencion_realizada.mascota.nombre.clone(),
+                atencion_realizada.mascota.duenio.nombre.clone(),
+                atencion_realizada.mascota.duenio.teléfono){
+                    *atencion = atencion_realizada;
                     break;
             }
         }
     }
-    pub fn eliminar_atencion(&mut self, atencionRealizada:AtencionRealizada) {
+    pub fn eliminar_atencion(&mut self, atencion_realizada:&'a AtencionRealizada<'a>) {
         let mut index = 0;
         for atencion in &mut self.registro_atenciones{
-            if atencion.soy_yo(atencionRealizada.mascota.nombre.clone(),
-                atencionRealizada.mascota.duenio.nombre.clone(),
-                atencionRealizada.mascota.duenio.teléfono){
+            if atencion.soy_yo(atencion_realizada.mascota.nombre.clone(),
+                atencion_realizada.mascota.duenio.nombre.clone(),
+                atencion_realizada.mascota.duenio.teléfono){
                     break;
             }
             index+=1;
@@ -595,7 +708,7 @@ impl Veterinaria {
 
         // if (index == self.proximas_atenciones.len() { panic })
 
-        let mut split_list = self.registro_atenciones.split_off(index);  // -------------------- IDK si funca, lo saque de internet xd
+        let mut split_list = self.registro_atenciones.split_off(index);  // ---------- IDK si funca, lo saque de internet xd
         split_list.pop_front();
         self.registro_atenciones.append(&mut split_list);
     }
@@ -644,14 +757,14 @@ Nota: para la fecha utilice lo implementado en el punto 3. */
 pub struct Biblioteca<'a>{
     nombre:String,
     direccion:String, 
-    libros_a_disposición:LibrosADisposicion,
+    libros_a_disposición:LibrosADisposicion<'a>,
     prestamos_efectuados:PrestamosEfectuados<'a>
 }
-pub struct LibrosADisposicion{
-    libros_a_disposición:Vec<LibroADisposicion>
+pub struct LibrosADisposicion<'a>{
+    libros_a_disposición:Vec<LibroADisposicion<'a>>
 }
-pub struct LibroADisposicion{
-    libro: Libro,
+pub struct LibroADisposicion<'a>{
+    libro: &'a Libro,
     cant_ejemplares:u32
 }
 #[derive(PartialEq)]
@@ -669,7 +782,7 @@ pub struct PrestamosEfectuados<'a>{
 pub enum Estado{Devuelto, EnPrestamo}
 pub struct Prestamo<'a> {
     libro:&'a Libro,
-    cliente: Cliente,
+    cliente: &'a Cliente,
     fecha_vencimiento:Fecha,
     fecha_devolución:Option<Fecha>,
     estado:Estado
@@ -682,17 +795,17 @@ pub struct Cliente{
 
 // ----------------------------- Constructores
 impl <'a> Biblioteca<'a>{
-    pub fn new ( nombre:String, direccion:String, libros_a_disposición:LibrosADisposicion, prestamos_efectuados:PrestamosEfectuados<'a>) -> Biblioteca{
+    pub fn new ( nombre:String, direccion:String, libros_a_disposición:LibrosADisposicion<'a>, prestamos_efectuados:PrestamosEfectuados<'a>) -> Biblioteca<'a>{
         Biblioteca{ nombre, direccion, libros_a_disposición, prestamos_efectuados }
     }
 }
-impl LibrosADisposicion{
-    pub fn new ( libros_a_disposición: Vec<LibroADisposicion>) -> LibrosADisposicion{
+impl <'a>LibrosADisposicion<'a>{
+    pub fn new ( libros_a_disposición: Vec<LibroADisposicion<'a>>) -> LibrosADisposicion<'a>{
         LibrosADisposicion{ libros_a_disposición }
     }
 }
-impl LibroADisposicion{
-    pub fn new ( libro:Libro, cant_ejemplares:u32) -> LibroADisposicion{
+impl <'a>LibroADisposicion<'a>{
+    pub fn new ( libro:&'a Libro, cant_ejemplares:u32) -> LibroADisposicion<'a>{
         LibroADisposicion{ libro, cant_ejemplares }
     }
 }
@@ -702,12 +815,12 @@ impl Libro{
     }
 }
 impl <'a>PrestamosEfectuados<'a>{
-    pub fn new ( prestamos: Vec<Prestamo<'a>>) -> PrestamosEfectuados{
+    pub fn new ( prestamos: Vec<Prestamo<'a>>) -> PrestamosEfectuados<'a>{
         PrestamosEfectuados{ prestamos }
     }
 }
 impl <'a>Prestamo<'a>{
-    pub fn new ( libro:&'a Libro, cliente:Cliente, fecha_vencimiento:Fecha, fecha_devolución:Option<Fecha>,estado:Estado) -> Prestamo{
+    pub fn new ( libro:&'a Libro, cliente:&'a Cliente, fecha_vencimiento:Fecha, fecha_devolución:Option<Fecha>,estado:Estado) -> Prestamo<'a>{
         Prestamo{ libro, cliente, fecha_vencimiento, fecha_devolución , estado}
     }
 }
@@ -719,33 +832,33 @@ impl Cliente{
 
 // ----------------------------------- metodos pedidos por el enunciado
 impl <'a> Biblioteca<'a>{
-    pub fn buscar_libro_a_disposicion(&mut self, libro:&Libro) -> Option<&mut LibroADisposicion>{
+    pub fn buscar_libro_a_disposicion(&mut self, libro:&'a Libro) -> Option<&mut LibroADisposicion<'a>>{
         self.libros_a_disposición.buscar(libro)
     }
-    pub fn cant_ejemplares (&mut self, libro:&Libro) -> u32{
+    pub fn cant_ejemplares (&mut self, libro:&'a Libro) -> u32{
         let res;
         if let Some(l) = self.buscar_libro_a_disposicion(libro){
             res = l.cant_ejemplares;
         } else {res = 0;}
         res
     }
-    pub fn libro_prestado(&mut self, libro:&Libro){
+    pub fn libro_prestado(&mut self, libro:&'a Libro){
         if let Some(l) = self.buscar_libro_a_disposicion(libro){
             l.cant_ejemplares -= 1;
         }
     }
-    pub fn libro_devuelto(&mut self, libro:&Libro){
+    pub fn libro_devuelto(&mut self, libro:&'a Libro){
         if let Some(l) = self.buscar_libro_a_disposicion(libro){
             l.cant_ejemplares += 1;
         }
     }
-    pub fn cant_prestamos_de(&self, cliente:&Cliente) -> u32{
+    pub fn cant_prestamos_de(&self, cliente:&'a Cliente) -> u32{
         self.prestamos_efectuados.cant_prestamos_de(cliente)
     }
-    pub fn cant_ejemplares_disponibles(&self, libro:&Libro){
+    pub fn cant_ejemplares_disponibles(&self, libro:&'a Libro){
         // no es lo mismo que cant_ejemplares?
     }
-    pub fn realizar_prestamos(&mut self, libro:&'a Libro, cliente:Cliente, fecha_vencimiento:Fecha, fecha_devolución:Option<Fecha>) -> bool{
+    pub fn realizar_prestamos(&mut self, libro:&'a Libro, cliente:&'a Cliente, fecha_vencimiento:Fecha, fecha_devolución:Option<Fecha>) -> bool{
         let mut res = true;
         if self.cant_prestamos_de(&cliente)<=5 && self.cant_ejemplares(libro)>=1 {
             self.prestamos_efectuados.agregar(Prestamo::new(libro, cliente, fecha_vencimiento, fecha_devolución, Estado::EnPrestamo));
@@ -760,10 +873,10 @@ impl <'a> Biblioteca<'a>{
     pub fn prestamos_a_vencidos(&self, hoy:Fecha) -> LinkedList<&Prestamo>{
         self.prestamos_efectuados.prestamos_a_vencidos(&hoy)
     }
-    pub fn buscar_prestamo(&mut self, libro:&Libro, cliente:&Cliente) -> Option<&mut Prestamo<'a>>{
+    pub fn buscar_prestamo(&mut self, libro:&'a Libro, cliente:&'a Cliente) -> Option<&mut Prestamo<'a>>{
         self.prestamos_efectuados.buscar_prestamo(libro,cliente)
     }
-    pub fn devolver_libro(&mut self, libro:&Libro, cliente:&Cliente, hoy:Fecha){
+    pub fn devolver_libro(&mut self, libro:&'a Libro, cliente:&'a Cliente, hoy:Fecha){
         let Some(p) = self.buscar_prestamo(libro, cliente) else {todo!()}; // panic
         p.registrar_devolucion(hoy);
         self.libro_devuelto(libro);
@@ -771,8 +884,8 @@ impl <'a> Biblioteca<'a>{
 }
 
 // ------------------------------------------ metodos auxiliares
-impl LibrosADisposicion{
-    pub fn buscar (&mut self, libro:&Libro) -> Option<&mut LibroADisposicion>{
+impl <'a>LibrosADisposicion<'a>{
+    pub fn buscar (&mut self, libro:&'a Libro) -> Option<&mut LibroADisposicion<'a>>{
         let mut res = None;
         for l in &mut self.libros_a_disposición {
             if l.libro.es_igual(libro) {res = Some(l)}; 
@@ -786,10 +899,10 @@ impl Libro{
     }
 }
 impl <'a>PrestamosEfectuados<'a>{
-    pub fn cant_prestamos_de(&self, cliente:&Cliente) -> u32{
+    pub fn cant_prestamos_de(&self, cliente:&'a Cliente) -> u32{
         let mut res = 0;
         for p in &self.prestamos {
-            if p.estado == Estado::EnPrestamo && p.cliente.es_igual(&cliente) {res += 1}; 
+            if p.estado == Estado::EnPrestamo && p.cliente.es_igual(cliente) {res += 1}; 
         }
         res
     }
@@ -810,7 +923,7 @@ impl <'a>PrestamosEfectuados<'a>{
         }
         res
     }
-    pub fn buscar_prestamo(&mut self, libro:&Libro, cliente:&Cliente) -> Option<&mut Prestamo<'a>>{
+    pub fn buscar_prestamo(&mut self, libro:&'a Libro, cliente:&'a Cliente) -> Option<&mut Prestamo<'a>>{
         let mut res = None;
         for p in &mut self.prestamos {
             if p.es_igual(libro,cliente){ res = Some(p)}
@@ -825,7 +938,7 @@ impl <'a>Prestamo<'a>{
         self.fecha_devolución.es_igual(&otro.fecha_devolución) && 
         self.estado == otro.estado
     }*/
-    pub fn es_igual (&self, libro:&Libro, cliente:&Cliente) -> bool{
+    pub fn es_igual (&self, libro:&'a Libro, cliente:&'a Cliente) -> bool{
         self.libro.es_igual(libro) && self.cliente.es_igual(cliente) 
     }
     pub fn esta_proximo_a_vencer(&self, hoy:&Fecha) -> bool{

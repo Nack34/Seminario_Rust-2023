@@ -6,7 +6,7 @@ mod tp1;
 mod tp2;
 mod test_tp2;
 mod tp3;
-fn main() {
+fn main() { // tp3, fecha, es_proxima => esta mal hecho, corregir
 
    let a:tp3::Auto = tp3::Auto::new("auto".to_string(),  "mo".to_string(), 40, 50.0, tp3::Color::Amarillo);
    let mut autos:Vec<tp3::Auto> = Vec::new();
