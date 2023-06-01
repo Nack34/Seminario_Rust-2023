@@ -639,6 +639,7 @@ impl <'a>AtencionRealizada <'a>{
     }
 }
 use std::collections::VecDeque;
+use std::collections::HashSet;
 pub struct Veterinaria<'a>{
     nombre:String,
     direccion:String,
@@ -711,6 +712,26 @@ impl <'a>Veterinaria<'a> {
         let mut split_list = self.registro_atenciones.split_off(index);  // ---------- IDK si funca, lo saque de internet xd
         split_list.pop_front();
         self.registro_atenciones.append(&mut split_list);
+    }
+    pub fn emails_a_enviar(&self, fecha_de_hoy: Fecha, dias: u8) -> Vec<String> {
+        let mut res: Vec<String> = Vec::new();
+        let mut fecha_a_chequear = Fecha::new(fecha_de_hoy.dia, fecha_de_hoy.mes, fecha_de_hoy.anio);
+        fecha_a_chequear.sumar_dias(dias as u32);
+    
+        let mut direcciones: HashSet<String> = HashSet::new();
+        for atencion_realizada in &self.registro_atenciones {
+            if let Some(fecha_proxima_visita) = &atencion_realizada.fecha_proxima_visita {
+                if fecha_proxima_visita.es_igual(&fecha_a_chequear) {
+                    direcciones.insert(atencion_realizada.mascota.duenio.direccion.clone());
+                }
+            }
+        }
+    
+        for direccion in direcciones {
+            res.push(direccion);
+        }
+    
+        res
     }
 }
 

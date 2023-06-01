@@ -6,8 +6,21 @@ mod tp1;
 mod tp2;
 mod test_tp2;
 mod tp3;
+mod tp4;
 fn main() { // tp3, fecha, es_proxima => esta mal hecho, corregir
 
+
+/* test tp4
+   tp4::test_strum();
+
+   let array1 = [tp4::Persona::new("a","a","a","a",0.0,5),
+   tp4::Persona::new("a","a","a","a",0.0,5),
+   tp4::Persona::new("a","a","a","a",0.0,5),
+   tp4::Persona::new("a","a","a","a",0.0,5)];
+   let array2 = tp4::get_edades(&array1);
+*/
+
+/* test tp3
    let a:tp3::Auto = tp3::Auto::new("auto".to_string(),  "mo".to_string(), 40, 50.0, tp3::Color::Amarillo);
    let mut autos:Vec<tp3::Auto> = Vec::new();
    autos.push(a);
@@ -21,6 +34,7 @@ fn main() { // tp3, fecha, es_proxima => esta mal hecho, corregir
    let j = c.buscar_auto(&a);
 
    println!("{:#?}",j);
+*/
 }
 
 /* -------------------------------------- DUDAS: ------------------------------------------- 
