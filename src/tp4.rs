@@ -1,5 +1,5 @@
 use crate::tp3::Fecha;
-use std::{collections::{HashMap, HashSet, hash_map}, borrow::BorrowMut,}; 
+use std::{collections::{HashMap, HashSet}}; 
 /* 1- Escriba una función que reciba un vector de números enteros y retorna la cantidad de
 números primos. Cree un trait para la determinación del número primo e impleméntelo
 según corresponda. Utilice la función iter sobre el vector y aplique un closure para
@@ -132,18 +132,27 @@ correspondientes a excepción de Efectivo.
 Los usuarios solo pueden tener una suscripción activa a la vez.
 */
 pub struct StreamingRust <'a>{
-    subscripciones:HashMap<&'a Usuario,Subscripcion>,
+    subscripciones:HashMap<&'a Usuario,Subscripcion<'a>>,
 }
-#[derive(PartialEq,Eq,Hash)]
+#[derive(PartialEq,Eq)]
 pub struct Usuario{
     nombre:String,
     id:u32
 }
-pub struct Subscripcion{
-    medio_de_pago:MedioDePago,
-    info_de_subscripcion:InfoDeSubscripcion, 
+impl Hash for Usuario{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
 }
-//cargo add strum
+pub struct Subscripcion<'a>{
+    info_propia:InfoDeSubscripcion, 
+    info_relacionada_al_usuario:InfoDeSubscripcionRelacionadaAlUsuario<'a>, 
+}
+pub struct InfoDeSubscripcionRelacionadaAlUsuario<'a> {
+    usuario: &'a Usuario,
+    medio_de_pago:MedioDePago,
+}
+//cargo add strum (https://crates.io/crates/strum)
 use strum::{EnumCount};
 use strum_macros::{EnumCount as EnumCountMacro,FromRepr};
 /*pub fn test_strum(){
@@ -154,34 +163,42 @@ use strum_macros::{EnumCount as EnumCountMacro,FromRepr};
 pub enum MedioDePago {
     Efectivo, MercadoPago(DataMedioDePago), TarjetaDeCredito(DataMedioDePago), TransferenciaBancaria(DataMedioDePago), Cripto(DataMedioDePago)
 }
-impl MedioDePago {
-    fn discriminant(&self) -> usize {
-        unsafe { *(self as *const Self as *const usize) }
+impl MedioDePago { 
+    fn discriminant(&self) -> usize { // https://docs.rs/enum-repr/latest/enum_repr/ // https://doc.rust-lang.org/std/mem/fn.discriminant.html
+        unsafe { *<*const _>::from(self).cast::<usize>() }
+    }
+    pub fn to_usize(&self) -> usize{ // por si encuentro manera de hacerlo sin usar codigo inseguro
+        self.discriminant()
+    }
+    pub const fn tamanio() -> usize{ // https://crates.io/crates/strum
+        MedioDePago::COUNT
     }
 }
-#[derive(Copy, Clone,Default)]
+#[derive(Copy, Clone, Default)]
 pub struct DataMedioDePago{
     nro_de_tarjeta:u32
 }
 pub struct InfoDeSubscripcion{
     tipo_de_subscripcion:TipoDeSubscripcion,
-    data_subscripcion:DataSubscripcion
+    costo_mensual:f64,
+    duracion_en_meses:u32,
+    fecha_de_inicio:Fecha,
 }
-#[derive(EnumCountMacro,Copy, Clone,FromRepr)]
+#[derive(EnumCountMacro,Copy, Clone,FromRepr,PartialEq)]
 #[repr(usize)]
 pub enum TipoDeSubscripcion{
     Basic, Clasic, Super
 }
 impl TipoDeSubscripcion {
     fn discriminant(&self) -> usize {
-        unsafe { *(self as *const Self as *const usize) }
+        unsafe { *<*const _>::from(self).cast::<usize>() }
     }
-}
-pub struct DataSubscripcion{
-    costo_mensual:f64,
-    duracion_en_meses:u32,
-    fecha_de_inicio:Fecha,
-    esta_vencido:bool // esto lo uso pasa simplificar logica. La otra es usar "Fecha" del tp3 y guardar la fecha de subscripcion para luego en "chequear_vencimiento" recibir la fecha actual y calcular si esta vencido o no
+    pub fn to_usize(&self) -> usize{ // por si encuentro manera de hacerlo sin usar codigo inseguro
+        self.discriminant()
+    }
+    pub const fn tamanio() -> usize{ // https://crates.io/crates/strum
+        MedioDePago::COUNT
+    }
 }
 // ---------- Constructores
 impl<'a> StreamingRust<'a>{
@@ -194,19 +211,17 @@ impl Usuario{
         Usuario { nombre, id }
     }
 }
-impl Subscripcion{
-    pub fn new(info_de_subscripcion:InfoDeSubscripcion, medio_de_pago:MedioDePago) ->Subscripcion{
-        Subscripcion { medio_de_pago, info_de_subscripcion }
+impl <'a>Subscripcion<'a>{
+    pub fn new(info_propia:InfoDeSubscripcion, usuario: &'a Usuario, medio_de_pago:MedioDePago ) ->Subscripcion<'a> {
+        Subscripcion{info_propia,
+                    info_relacionada_al_usuario: InfoDeSubscripcionRelacionadaAlUsuario{
+                        usuario,
+                        medio_de_pago} }
     }
 }
 impl InfoDeSubscripcion{
-    pub fn new(tipo_de_subscripcion:TipoDeSubscripcion,data_subscripcion:DataSubscripcion)->InfoDeSubscripcion{
-        InfoDeSubscripcion { tipo_de_subscripcion, data_subscripcion }
-    }
-}
-impl DataSubscripcion{
-    pub fn new (costo_mensual:f64, duracion_en_meses:u32, fecha_de_inicio:Fecha ,esta_vencido:bool)-> DataSubscripcion{
-        DataSubscripcion { costo_mensual, duracion_en_meses, fecha_de_inicio, esta_vencido }
+    pub fn new(tipo_de_subscripcion:TipoDeSubscripcion,costo_mensual:f64, duracion_en_meses:u32, fecha_de_inicio:Fecha )->InfoDeSubscripcion{
+        InfoDeSubscripcion { tipo_de_subscripcion,  costo_mensual, duracion_en_meses, fecha_de_inicio }
     }
 }
 impl DataMedioDePago{
@@ -217,31 +232,15 @@ impl DataMedioDePago{
 /* Implemente las estructuras, funciones asociadas y traits necesarios para resolver las
 siguientes acciones:
 ➢ Crear un usuario con una determinada suscripción y medio de pago. */
-impl  <'a> DataSubscripcion{
-    pub fn chequear_vencimiento (&self, hoy:&'a Fecha)->bool{
-        /* return fecha_actual - fecha_creacion > duracion_en_meses */
-        self.esta_vencido
-    }
-}
-impl Subscripcion{
-    pub fn esta_vencida <'a>(&self, hoy:&'a Fecha)-> bool{
-        self.info_de_subscripcion.data_subscripcion.chequear_vencimiento(hoy)
-    }
-    pub fn set_info(&mut self, info_de_subscripcion:InfoDeSubscripcion){
-        self.info_de_subscripcion=info_de_subscripcion;
-    }
-    pub fn set_medio_de_pago(&mut self, medio_de_pago:MedioDePago){
-        self.medio_de_pago=medio_de_pago;
-    }
-}
 impl<'a> StreamingRust<'a>{
-    pub fn agregar_subscripcion(&mut self, user: &'a Usuario, info_de_subscripcion:InfoDeSubscripcion, medio_de_pago:MedioDePago, hoy:Fecha) -> bool{ // retorna true si el usuario no tenia otra subscripcion valida, false en caso contrario
-        if !self.subscripciones.contains_key(user) {
-            self.subscripciones.insert(user,Subscripcion::new(info_de_subscripcion,medio_de_pago));
+    // retorna true si el usuario no tenia otra subscripcion valida, false si no se pudo completar la accion
+    pub fn agregar_subscripcion(&mut self, usuario: &'a Usuario, info_de_subscripcion:InfoDeSubscripcion, medio_de_pago:MedioDePago, hoy:Fecha) -> bool{ 
+        if !self.subscripciones.contains_key(usuario) {
+            self.subscripciones.insert(usuario,Subscripcion::new(info_de_subscripcion, usuario, medio_de_pago));
             return true
         }
      
-        let subscripcion_guardada = self.subscripciones.get_mut(user).unwrap();
+        let subscripcion_guardada = self.subscripciones.get_mut(usuario).unwrap();
         if subscripcion_guardada.esta_vencida(&hoy){
             subscripcion_guardada.set_info(info_de_subscripcion);
             subscripcion_guardada.set_medio_de_pago(medio_de_pago);
@@ -251,9 +250,37 @@ impl<'a> StreamingRust<'a>{
         return false
     }
 }
+impl<'a> Subscripcion<'a>{
+    pub fn esta_vencida (&self, hoy:&'a Fecha)-> bool{
+        self.info_propia.chequear_vencimiento(hoy)
+    }
+    pub fn set_info(&mut self, info_propia:InfoDeSubscripcion){
+        self.info_propia=info_propia;
+    }
+    pub fn set_medio_de_pago(&mut self, medio_de_pago:MedioDePago){
+        self.info_relacionada_al_usuario.medio_de_pago=medio_de_pago;
+    }
+}
+impl  <'a> InfoDeSubscripcion{
+    pub fn chequear_vencimiento (&self, hoy:&'a Fecha)->bool{
+        self.fecha_de_inicio.diferencencia_de_meses(hoy) > self.duracion_en_meses
+    }
+}
 
 /* ➢ Dado un usuario hacer un upgrade sobre la suscripción. Es decir si está a Basic
 pasa a Clasic y si está en Clasic pasa a Super. */
+impl <'a> StreamingRust<'a> {
+    pub fn upgrade_subscripcion_de(&mut self, user: &'a Usuario){
+        if !self.subscripciones.contains_key(user) {panic!("USUARIO NO REGISTRADO")}
+
+        self.subscripciones.get_mut(user).unwrap().upgrade_subscripcion();
+    }
+}
+impl<'a> Subscripcion<'a>{
+    pub fn upgrade_subscripcion(&mut self){
+        self.info_propia.upgrade();
+    }
+}
 impl InfoDeSubscripcion{
     pub fn upgrade(&mut self){
         match self.tipo_de_subscripcion{
@@ -263,53 +290,57 @@ impl InfoDeSubscripcion{
         }
     }
 }
-impl <'a> StreamingRust<'a> {
-    pub fn upgrade_subscripcion_de(&mut self, user: &'a Usuario) ->bool{
-        if !self.subscripciones.contains_key(user) {return false}
-
-        self.subscripciones.get_mut(user).unwrap().info_de_subscripcion.upgrade();
-        true
-    }
-}
 
 /* ➢ Dado un determinado usuario, hacer un downgrade sobre una suscripción, si la
 suscripción es del tipo Basic al hacerlo se cancelará la suscripción. */
-impl InfoDeSubscripcion{
-    pub fn downgrade_or_to_remove <'a> (&mut self)->bool{ // returns true si tiene que ser eliminado 
-        match self.tipo_de_subscripcion{
-            TipoDeSubscripcion::Basic => true, 
-            TipoDeSubscripcion::Clasic => {self.tipo_de_subscripcion=TipoDeSubscripcion::Basic; false}, 
-            TipoDeSubscripcion::Super => {self.tipo_de_subscripcion=TipoDeSubscripcion::Clasic; false}
-        }
-    }
-}
 impl <'a> StreamingRust<'a> {
-    pub fn downgrade_subscripcion_de(&mut self, user: &'a Usuario) ->bool{
-        if !self.subscripciones.contains_key(user) {return false}
+    pub fn downgrade_subscripcion_de(&mut self, user: &'a Usuario) {
+        if !self.subscripciones.contains_key(user) {panic!("USUARIO NO REGISTRADO")}
 
-        if self.subscripciones.get_mut(user).unwrap().info_de_subscripcion.downgrade_or_to_remove(){
+        if self.subscripciones.get_mut(user).unwrap().downgrade_or_else_remove_subscripcion(){
             self.cancelar_subscripcion(user);
         }
-        true
     }
 
 /* ➢ Dado un usuario cancelar la suscripción. */
     pub fn cancelar_subscripcion(&mut self, user: &'a Usuario){
-        self.subscripciones.remove(user);
+        // Esto podria hacerse de otras maneras. Depende de si se quiere seguir manteniendo la informacion de ...
+        //... las subs canceladas o no, yo asumo que eso no se quiere guardar asi que se elimina toda informacion
+        self.subscripciones.remove(user); 
     }
 }
+impl<'a> Subscripcion<'a>{
+    pub fn downgrade_or_else_remove_subscripcion(&mut self) -> bool{ // returns true si tiene que ser cancelada 
+        if self.info_propia.es_el_peor_tipo_de_subscripcion() {return true}
+        self.info_propia.downgrade();
+        false
+    }
+}
+impl InfoDeSubscripcion{
+    pub fn es_el_peor_tipo_de_subscripcion(&self) -> bool{
+        self.tipo_de_subscripcion == TipoDeSubscripcion::Basic
+    }
+    pub fn downgrade <'a> (&mut self){ 
+        match self.tipo_de_subscripcion{
+            TipoDeSubscripcion::Basic => {}, 
+            TipoDeSubscripcion::Clasic => {self.tipo_de_subscripcion=TipoDeSubscripcion::Basic}, 
+            TipoDeSubscripcion::Super => {self.tipo_de_subscripcion=TipoDeSubscripcion::Clasic}
+        }
+    }
+}
+
 /* ➢ Saber el medio de pago que es más utilizado por los usuarios sobre las
 suscripciones activas */
 impl <'a> StreamingRust<'a> {
-    pub fn medio_de_pago_mas_utilizado(&self, hoy:Fecha) ->MedioDePago { // uso el crate strum, para un mejor manejo de enums
+    pub fn medio_de_pago_mas_utilizado_de_subscripciones_activas(&self, hoy:Fecha) ->MedioDePago { // uso el crate strum, para un mejor manejo de enums
 
-        const COUNT:usize = MedioDePago::COUNT; // cantidad de enums = longitud del array
+        const COUNT:usize = MedioDePago::tamanio(); // cantidad de enums = longitud del array
         let mut medios_de_pago: [u32; COUNT] = [0;COUNT]; // el index representa el medio de pago, el contenido representa la cantidad de veces que aparece ese enum
 
         self.subscripciones.iter()
         .filter(|s|!s.1.esta_vencida(&hoy)) //obtengo las subscripciones activas 
-        .map(|s|s.1.medio_de_pago) // obtengo los medios de pagos de las subs activas
-        .for_each(|medio_de_pago|medios_de_pago[medio_de_pago.discriminant()]+=1); // cargo la cant de veces que se repite cada medio de pago
+        .map(|s|s.1.get_medio_de_pago()) // obtengo los medios de pagos de las subs activas
+        .for_each(|medio_de_pago|medios_de_pago[medio_de_pago.to_usize()]+=1); // cargo la cant de veces que se repite cada medio de pago
 
         let max_index = medios_de_pago.iter()
         .enumerate() // enlazo los indices a los valores
@@ -348,17 +379,77 @@ impl <T> IAcumulable for Iter<'_, T>{
         5
     }
 }*/
+impl<'a> Subscripcion<'a> {
+    pub fn get_medio_de_pago(&self) -> &MedioDePago{
+        self.info_relacionada_al_usuario.get_medio_de_pago()
+    }
+}
+impl<'a> InfoDeSubscripcionRelacionadaAlUsuario <'a> {
+    pub fn get_medio_de_pago(&self) -> &MedioDePago{
+        &self.medio_de_pago
+    }
+}
+
 /* ➢ Saber cual es la suscripción más contratada por los usuarios sobre las suscripciones
 activas. */
 impl <'a> StreamingRust<'a> {
-    pub fn tipo_de_subscripcion_mas_contratada(&self, hoy:Fecha) ->TipoDeSubscripcion { // cargo add strum // ------------------------ todo!(): HACER LO MISMO QUE CON EL DE ARRIBA
+    pub fn tipo_de_subscripcion_mas_contratada_de_subscripciones_activas(&self, hoy:Fecha) ->TipoDeSubscripcion { 
         
-        const COUNT:usize = TipoDeSubscripcion::COUNT; // cantidad de enums = longitud del array
+        const COUNT:usize = TipoDeSubscripcion::tamanio(); // cantidad de enums = longitud del array
         let mut tipos_de_subscripciones: [u32; COUNT] = [0;COUNT]; // el index representa el medio de pago, el contenido representa la cantidad de veces que aparece ese enum
 
         self.subscripciones.iter()
         .filter(|s|!s.1.esta_vencida(&hoy)) //obtengo las subscripciones activas 
-        .map(|s|s.1.info_de_subscripcion.tipo_de_subscripcion) // obtengo los medios de pagos de las subs activas
+        .map(|s|s.1.get_tipo_de_subscripcion()) // obtengo los medios de pagos de las subs activas
+        .for_each(|tipo_de_subscripcion|tipos_de_subscripciones[tipo_de_subscripcion.to_usize()]+=1); // cargo la cant de veces que se repite cada medio de pago
+
+        let max_index = tipos_de_subscripciones.iter()
+        .enumerate() // enlazo los indices a los valores
+        .max_by_key(|x|x.1) // obtengo el maximo
+        .unwrap().0; // obtengo el indice del valor maximo
+
+        TipoDeSubscripcion::from_repr(max_index).unwrap()
+    }
+}
+impl<'a> Subscripcion<'a> {
+    pub fn get_tipo_de_subscripcion(&self) -> &TipoDeSubscripcion {
+        self.info_propia.get_tipo_de_subscripcion()
+    }
+}
+impl InfoDeSubscripcion  {
+    pub fn get_tipo_de_subscripcion(&self) -> &TipoDeSubscripcion {
+        &self.tipo_de_subscripcion
+    }
+}
+/* ➢ Saber cuál fue el medio de pago más utilizado. */ //--------------- ???? No es casi lo mismo que la de arriba?
+/* ➢ Saber cuál fue la suscripción más contratada. */ //--------------- ???? No es casi lo mismo que la de arriba?
+
+impl <'a> StreamingRust<'a> {
+    pub fn medio_de_pago_mas_utilizado(&self) ->MedioDePago { 
+
+        const COUNT:usize = MedioDePago::tamanio(); // cantidad de enums = longitud del array
+        let mut medios_de_pago: [u32; COUNT] = [0;COUNT]; // el index representa el medio de pago, el contenido representa la cantidad de veces que aparece ese enum
+
+        self.subscripciones.iter()
+        .map(|s|s.1.get_medio_de_pago()) // obtengo los medios de pagos de las subs activas
+        .for_each(|medio_de_pago|medios_de_pago[medio_de_pago.to_usize()]+=1); // cargo la cant de veces que se repite cada medio de pago
+
+        let max_index = medios_de_pago.iter()
+        .enumerate() // enlazo los indices a los valores
+        .max_by_key(|x|x.1) // obtengo el maximo
+        .unwrap().0; // obtengo el indice del valor maximo
+
+        MedioDePago::from_repr(max_index).unwrap() // convierto el index obtenido al enum y lo retorno
+    }
+}
+impl <'a> StreamingRust<'a> {
+    pub fn tipo_de_subscripcion_mas_contratada(&self) ->TipoDeSubscripcion { 
+        
+        const COUNT:usize = TipoDeSubscripcion ::tamanio(); // cantidad de enums = longitud del array
+        let mut tipos_de_subscripciones: [u32; COUNT] = [0;COUNT]; // el index representa el medio de pago, el contenido representa la cantidad de veces que aparece ese enum
+
+        self.subscripciones.iter()
+        .map(|s|s.1.get_tipo_de_subscripcion()) // obtengo los medios de pagos de las subs activas
         .for_each(|tipo_de_subscripcion|tipos_de_subscripciones[tipo_de_subscripcion.discriminant()]+=1); // cargo la cant de veces que se repite cada medio de pago
 
         let max_index = tipos_de_subscripciones.iter()
@@ -369,8 +460,6 @@ impl <'a> StreamingRust<'a> {
         TipoDeSubscripcion::from_repr(max_index).unwrap()
     }
 }
-/* ➢ Saber cuál fue el medio de pago más utilizado. */ //--------------- ???? No es lo mismo que la de arriba?
-/* ➢ Saber cuál fue la suscripción más contratada. */ //--------------- ???? No es lo mismo que la de arriba?
 
 /* 4 -Se requiere implementar un sistema de ventas de productos. De cada producto se
 conoce el nombre, una categoría y un precio base, y algunos productos pueden tener

@@ -147,6 +147,12 @@ impl Fecha{
         if self.mes!=otro.mes {return self.mes>otro.mes} 
         return self.dia >= otro.dia || otro.dia - self.dia <= 7
     }
+    pub fn diferencencia_de_meses(&self, otro:&Self) -> u32{ // PRECONDICION --> otro > self
+        otro.cantidad_de_meses() - self.cantidad_de_meses()
+    }
+    pub fn cantidad_de_meses(&self) -> u32{
+        self.anio * 12 + self.mes
+    }
 }
 
 /* 4- Escribir un programa que defina la estructura Triángulo que tenga campos para las
