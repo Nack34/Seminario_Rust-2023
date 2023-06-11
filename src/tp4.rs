@@ -640,7 +640,17 @@ pub struct Plataforma<'a>{
 }
 
 #[derive(Eq, PartialEq)]
-pub struct Criptomoneda <'a>{
+pub struct User{ 
+    nombre:String, apellido:String, email:String, dni:u32,
+}
+impl Hash for User{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.dni.hash(state);
+    }
+}
+
+#[derive(Eq, PartialEq,Clone)]
+pub struct Criptomoneda <'a>{ 
     nombre:String, prefijo:String,
     blockchains_accedibles:HashSet<&'a BlockChain>
 }
@@ -652,24 +662,23 @@ impl<'a> Hash for Criptomoneda<'a>{
 }
 
 #[derive(Eq, Hash, PartialEq)]
-pub struct BlockChain{
+pub struct BlockChain{ 
     nombre:String, prefijo:String
 }
 
-pub struct DatosDeUsuarioEnLaPlataforma<'a> {
+pub struct DatosDeUsuarioEnLaPlataforma<'a> { 
     usuario: &'a User,
     identidad_validada:bool,        
     monto_fiat:f32,
-    balances:HashMap<&'a Criptomoneda<'a>,Balance<'a>>,
-    transacciones:Option<Vec<Transaccion<'a>>>
+    balances:Balances<'a>,
+    transacciones:Transacciones<'a>
 } 
-
-#[derive(Eq, Hash, PartialEq)]
-pub struct User{
-    nombre:String, apellido:String, email:String, dni:u32,
+#[derive(Default)]
+pub struct Balances<'a>{ 
+    data:HashMap<&'a Criptomoneda<'a>,Balance<'a>>
 }
-
-pub struct Balance<'a>{
+#[derive(Clone)]
+pub struct Balance<'a>{ 
     usuario: &'a User, criptomoneda: &'a Criptomoneda<'a>,
     monto:f32
 }
@@ -686,6 +695,10 @@ impl<'a> PartialEq for Balance<'a>{
 }
 impl<'a> Eq for Balance<'a>{} 
 
+pub struct Transacciones<'a>{ 
+    data:Option<Vec<Transaccion<'a>>>
+}
+#[derive(Clone)]
 pub enum Transaccion<'a>{
     IngresoDeDinero{fecha:Fecha,
                     usuario: &'a User,
@@ -724,20 +737,35 @@ pub enum Transaccion<'a>{
                  monto_de_fiat:f32, 
                  medio:Medio }
 }
+#[derive(Clone)]
 pub enum Medio{
     MercadoPago, TransferenciaBancaria
 }
-// ------------------------------ CONSTRUCTORES -------------- TERMINARRRRRRRRRRRS
+// ------------------------------ CONSTRUCTORES -------------- 
 impl<'a> Plataforma <'a>{
-    pub fn new(users:&'a Vec<&'a User>, criptomonedas:HashSet<Criptomoneda<'a>>,blockchains:HashSet<BlockChain>) -> Plataforma<'a>{
+    pub fn new(users:&'a HashSet<&'a User>, criptomonedas:HashSet<Criptomoneda<'a>>,blockchains:HashSet<BlockChain>) -> Plataforma<'a>{
         let mut datos_usuarios = HashMap::new();
         users.iter().for_each(|&user|{datos_usuarios.insert(user, DatosDeUsuarioEnLaPlataforma::new(user));});
-        Plataforma {datos_usuarios, criptomonedas, blockchains}
+        let mut p = Plataforma {datos_usuarios, criptomonedas, blockchains};
+        //p.add_criptos_all_balances();
+        p
+    }
+    fn add_criptos_all_balances(&'a mut self){ // ------------------------------------------------------------------------------------------------ COMO SACO ESA 'a ESTA MALLLLLLLLLLL
+        self.datos_usuarios.iter_mut().for_each(|datos_usuario|datos_usuario.1.balances.add_criptos(&self.criptomonedas, datos_usuario.0))
     }
 }
+
 impl<'a> DatosDeUsuarioEnLaPlataforma<'a>{
     pub fn new(usuario:&'a User) ->DatosDeUsuarioEnLaPlataforma<'a>{
-        DatosDeUsuarioEnLaPlataforma { usuario, identidad_validada: false, monto_fiat: 0.0, balances: HashMap::new() , transacciones: None }
+        DatosDeUsuarioEnLaPlataforma { usuario, identidad_validada: false, monto_fiat: 0.0, balances: Balances::new() , transacciones: Transacciones::new() }
+    }
+}
+impl <'a> Balances<'a>{
+    pub fn new() -> Balances<'a>{
+        Balances{data:HashMap::new()}
+    }
+    pub fn add_criptos(&mut self, criptomonedas:&'a HashSet<Criptomoneda<'a>>, usuario:&'a User){
+        criptomonedas.iter().for_each(|c|{ self.data.insert(c, Balance::new(usuario, c, 0.0)); });        
     }
 }
 impl <'a> Balance <'a>{
@@ -745,6 +773,12 @@ impl <'a> Balance <'a>{
         Balance { usuario, criptomoneda, monto }
     }
 }
+impl <'a> Transacciones <'a>{
+    pub fn new() -> Transacciones <'a>{
+        Transacciones {data:None}
+    }
+}
+// Plataforma, User, Criptomoneda, BlockChain, DatosDeUsuarioEnLaPlataforma, Balances, Balance, Transacciones
 /* 
 Implemente las estructuras, funciones asociadas y traits necesarios para resolver las
 siguientes acciones relacionadas al usuario:
@@ -771,11 +805,23 @@ impl <'a> DatosDeUsuarioEnLaPlataforma <'a>{
         self.monto_fiat+=monto;
     }
     pub fn registrar_transaccion(&mut self, transaccion: Transaccion<'a>){
-        if let Some(transacciones) = &mut self.transacciones {
-            transacciones.push(transaccion);
+        let new_data;
+        if let Some(mut t) = self.transacciones.get_data() {
+            t.push(transaccion);
+            new_data=t;
         } else {
-            self.transacciones = Some(vec![transaccion]);
+            new_data = vec![transaccion];
         }
+        self.transacciones.set_data(Some(new_data));
+
+    }
+}
+impl <'a> Transacciones <'a>{
+    pub fn get_data(&self) -> Option<Vec<Transaccion<'a>>>{
+        self.data.clone() // le hago clone ya que despues va a pasar a ser archivo
+    }
+    pub fn set_data(&mut self, new_data:Option<Vec<Transaccion<'a>>>) {
+        self.data=new_data;
     }
 }
 /*
@@ -819,9 +865,28 @@ impl <'a> DatosDeUsuarioEnLaPlataforma<'a>{
         self.monto_fiat-=monto;
     }
     pub fn agregar_monto_cripto(&mut self, cripto:&'a Criptomoneda, monto:f32){
-        if let Some(balance_de_cripto) = self.balances.get_mut(cripto) {
-            balance_de_cripto.sumar_monto(monto);
+        if let Some(_) = self.balances.get(cripto) {
+            self.balances.sumar_monto_a(cripto,monto);
         } else { self.balances.insert(cripto, Balance::new(self.usuario,cripto,monto)); }
+    }
+}
+impl <'a> Balances<'a>{
+    pub fn get(&self, cripto: &'a Criptomoneda) -> Option<Balance>{
+        if let Some(b) = self.data.get(cripto){
+            return Some(b.clone()) // le hago clone ya que despues va a pasar a ser archivo
+        }
+        None
+    }
+    pub fn insert(&mut self, cripto:&'a Criptomoneda, balance:Balance<'a>) {
+        self.data.insert(cripto, balance);
+    }
+    pub fn sumar_monto_a(&mut self, cripto:&'a Criptomoneda, monto:f32) {
+        
+        if let Some(b) = self.data.get_mut(cripto){
+            b.sumar_monto(monto)
+        }else{
+            panic!("NO EXISTE EL BALANCE DE LA CRIPTOMONEDA {} DEL USUARIO SOLICITADO",cripto.nombre)
+        }
     }
 }
 impl <'a> Balance <'a> {
@@ -861,9 +926,18 @@ impl<'a> Plataforma<'a>{
 }
 impl <'a> DatosDeUsuarioEnLaPlataforma<'a>{
     pub fn quitar_monto_cripto(&mut self, cripto:&'a Criptomoneda, monto:f32){
-        if let Some(balance_de_cripto) = self.balances.get_mut(cripto) {
-            balance_de_cripto.restar_monto(monto);
-        } else { panic!("NO SE TIENE REGISTRO DE BALANCE EN LA CRIPTO {}",cripto.nombre) }
+        if let Some(_) = self.balances.get(cripto) {
+            self.balances.restar_monto_a(cripto,monto);
+        } else { panic!("NO SE TIENE REGISTRO DEL BALANCE DE LA CRIPTO {}",cripto.nombre) }
+    }
+}
+impl<'a> Balances<'a>{
+    pub fn restar_monto_a(&mut self, cripto:&'a Criptomoneda, monto:f32) {
+        if let Some(b) = self.data.get_mut(cripto){
+            b.restar_monto(monto)
+        }else{
+            panic!("NO EXISTE EL BALANCE DE LA CRIPTOMONEDA {} DEL USUARIO SOLICITADO",cripto.nombre)
+        }
     }
 }
 impl <'a> Balance <'a> { 
@@ -950,31 +1024,31 @@ Además la empresa desea saber lo siguiente en base a sus operaciones:
 ➢ Saber cual es la criptomoneda que más cantidad de compras tiene
 ➢ Saber cual es la criptomoneda que más volumen de ventas tiene
 ➢ Saber cual es la criptomoneda que más volumen de compras tiene
-*/
+*/  
 impl<'a> Plataforma<'a>{
     pub fn get_cripto_mayor_vendida(&self)->&'a Criptomoneda <'a>{
         let mut contador = CantidadYVolumenDeComprasPorCriptomoneda::new();
         contador.contar(&self);
-        contador.cantidad_de_ventas_criptomonedas.iter().
-        max_by_key(|c|c.1).unwrap().0
+        contador.cantidad_de_ventas_criptomonedas.iter()
+        .max_by_key(|c|c.1).unwrap().0
     }
     pub fn get_cripto_mayor_comprada(&self)->&'a Criptomoneda <'a>{
         let mut contador = CantidadYVolumenDeComprasPorCriptomoneda::new();
         contador.contar(&self);
-        contador.cantidad_de_compras_criptomonedas.iter().
-        max_by_key(|c|c.1).unwrap().0
+        contador.cantidad_de_compras_criptomonedas.iter()
+        .max_by_key(|c|c.1).unwrap().0
     }
     pub fn get_cripto_con_mayor_volumen_de_ventas(&self)->&'a Criptomoneda <'a>{
         let mut contador = CantidadYVolumenDeComprasPorCriptomoneda::new();
         contador.contar(&self);
-        contador.volumen_de_ventas_criptomonedas.iter().
-        max_by(|c1,c2|c1.1.partial_cmp(c2.1).unwrap()).unwrap().0
+        contador.volumen_de_ventas_criptomonedas.iter()
+        .max_by(|c1,c2|c1.1.partial_cmp(c2.1).unwrap()).unwrap().0
     }
     pub fn get_cripto_con_mayor__volumen_de_compras(&self)->&'a Criptomoneda <'a>{
         let mut contador = CantidadYVolumenDeComprasPorCriptomoneda::new();
         contador.contar(&self);
-        contador.volumen_de_compras_criptomonedas.iter().
-        max_by(|c1,c2|c1.1.partial_cmp(c2.1).unwrap()).unwrap().0
+        contador.volumen_de_compras_criptomonedas.iter()
+        .max_by(|c1,c2|c1.1.partial_cmp(c2.1).unwrap()).unwrap().0
 
     }
 }
@@ -991,7 +1065,7 @@ impl <'a>CantidadYVolumenDeComprasPorCriptomoneda<'a>{
     pub fn contar(&mut self,plataforma: &Plataforma<'a>){
         plataforma.datos_usuarios.iter()
         .for_each(|dato|{ 
-            if let Some(transacciones) = &dato.1.transacciones{ 
+            if let Some(transacciones) = dato.1.transacciones.get_data(){ 
                 transacciones.iter().for_each(|transaccion|{
                     match transaccion {
                         Transaccion::CompraDeCripto { criptomoneda, monto_de_cripto, .. } => {

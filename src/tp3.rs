@@ -70,6 +70,7 @@ cuenta los años bisiestos también.
 ➢ restar_dias(dias): resta la cantidad de días a la fecha, modificándose
 ➢ es_mayor(una_fecha): que retorna true si la fecha que recibe el mensaje es mayor a
 la fecha pasada por parámetro.. */
+#[derive(Clone)]
 pub struct Fecha{    
     dia: u32,
     mes: u32,
