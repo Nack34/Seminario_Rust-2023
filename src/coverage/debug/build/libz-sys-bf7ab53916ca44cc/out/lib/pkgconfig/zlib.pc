@@ -1,0 +1,13 @@
+prefix=C:\Users\NICOLAS\Desktop\2023\Primer semestre\Rust\Seminario_Rust-2023\src\coverage\debug\build\libz-sys-bf7ab53916ca44cc\out
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+sharedlibdir=@sharedlibdir@
+includedir=@includedir@
+
+Name: zlib
+Description: zlib compression library
+Version: @VERSION@
+
+Requires:
+Libs: -L${libdir} -L${sharedlibdir} -lz
+Cflags: -I${includedir}

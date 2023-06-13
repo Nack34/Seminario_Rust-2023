@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 cargo-tarpaulin = "0.25.2"
+faux = "0.1.9"
 random-number = "0.1.8"
 strum = "0.24.1"
 strum_macros = "0.24"

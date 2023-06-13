@@ -1,0 +1,10 @@
+C:\Users\NICOLAS\Desktop\2023\Primer semestre\Rust\Seminario_Rust-2023\src\coverage\debug\deps\faux_macros-9dbf62a76c0eeb52.dll: C:\Users\NICOLAS\.cargo\registry\src\github.com-1ecc6299db9ec823\faux_macros-0.1.9\src\lib.rs C:\Users\NICOLAS\.cargo\registry\src\github.com-1ecc6299db9ec823\faux_macros-0.1.9\src\create.rs C:\Users\NICOLAS\.cargo\registry\src\github.com-1ecc6299db9ec823\faux_macros-0.1.9\src\methods.rs C:\Users\NICOLAS\.cargo\registry\src\github.com-1ecc6299db9ec823\faux_macros-0.1.9\src\methods\morphed.rs C:\Users\NICOLAS\.cargo\registry\src\github.com-1ecc6299db9ec823\faux_macros-0.1.9\src\methods\receiver.rs C:\Users\NICOLAS\.cargo\registry\src\github.com-1ecc6299db9ec823\faux_macros-0.1.9\src\self_type.rs
+
+C:\Users\NICOLAS\Desktop\2023\Primer semestre\Rust\Seminario_Rust-2023\src\coverage\debug\deps\faux_macros-9dbf62a76c0eeb52.d: C:\Users\NICOLAS\.cargo\registry\src\github.com-1ecc6299db9ec823\faux_macros-0.1.9\src\lib.rs C:\Users\NICOLAS\.cargo\registry\src\github.com-1ecc6299db9ec823\faux_macros-0.1.9\src\create.rs C:\Users\NICOLAS\.cargo\registry\src\github.com-1ecc6299db9ec823\faux_macros-0.1.9\src\methods.rs C:\Users\NICOLAS\.cargo\registry\src\github.com-1ecc6299db9ec823\faux_macros-0.1.9\src\methods\morphed.rs C:\Users\NICOLAS\.cargo\registry\src\github.com-1ecc6299db9ec823\faux_macros-0.1.9\src\methods\receiver.rs C:\Users\NICOLAS\.cargo\registry\src\github.com-1ecc6299db9ec823\faux_macros-0.1.9\src\self_type.rs
+
+C:\Users\NICOLAS\.cargo\registry\src\github.com-1ecc6299db9ec823\faux_macros-0.1.9\src\lib.rs:
+C:\Users\NICOLAS\.cargo\registry\src\github.com-1ecc6299db9ec823\faux_macros-0.1.9\src\create.rs:
+C:\Users\NICOLAS\.cargo\registry\src\github.com-1ecc6299db9ec823\faux_macros-0.1.9\src\methods.rs:
+C:\Users\NICOLAS\.cargo\registry\src\github.com-1ecc6299db9ec823\faux_macros-0.1.9\src\methods\morphed.rs:
+C:\Users\NICOLAS\.cargo\registry\src\github.com-1ecc6299db9ec823\faux_macros-0.1.9\src\methods\receiver.rs:
+C:\Users\NICOLAS\.cargo\registry\src\github.com-1ecc6299db9ec823\faux_macros-0.1.9\src\self_type.rs:

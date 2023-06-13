@@ -673,7 +673,6 @@ pub struct DatosDeUsuarioEnLaPlataforma<'a> {
     balances:Balances<'a>,
     transacciones:Transacciones<'a>
 } 
-#[derive(Default)]
 pub struct Balances<'a>{ 
     data:HashMap<&'a Criptomoneda<'a>,Balance<'a>>
 }
@@ -742,19 +741,28 @@ pub enum Medio{
     MercadoPago, TransferenciaBancaria
 }
 // ------------------------------ CONSTRUCTORES -------------- 
+impl User{
+    pub fn new(nombre: String, apellido: String, email: String, dni: u32 )->User{
+        User { nombre, apellido, email, dni }
+    }
+}
 impl<'a> Plataforma <'a>{
     pub fn new(users:&'a HashSet<&'a User>, criptomonedas:HashSet<Criptomoneda<'a>>,blockchains:HashSet<BlockChain>) -> Plataforma<'a>{
         let mut datos_usuarios = HashMap::new();
         users.iter().for_each(|&user|{datos_usuarios.insert(user, DatosDeUsuarioEnLaPlataforma::new(user));});
-        let mut p = Plataforma {datos_usuarios, criptomonedas, blockchains};
-        //p.add_criptos_all_balances();
-        p
-    }
-    fn add_criptos_all_balances(&'a mut self){ // ------------------------------------------------------------------------------------------------ COMO SACO ESA 'a ESTA MALLLLLLLLLLL
-        self.datos_usuarios.iter_mut().for_each(|datos_usuario|datos_usuario.1.balances.add_criptos(&self.criptomonedas, datos_usuario.0))
+        Plataforma {datos_usuarios, criptomonedas, blockchains}
     }
 }
-
+impl<'a> Criptomoneda<'a>{
+    pub fn new(nombre: String, prefijo: String, blockchains_accedibles: HashSet<&'a BlockChain> ) ->Criptomoneda<'a>{
+        Criptomoneda { nombre, prefijo, blockchains_accedibles }
+    }
+}
+impl BlockChain{
+    pub fn new(nombre: String, prefijo: String ) ->BlockChain{
+        BlockChain { nombre, prefijo }
+    }
+}
 impl<'a> DatosDeUsuarioEnLaPlataforma<'a>{
     pub fn new(usuario:&'a User) ->DatosDeUsuarioEnLaPlataforma<'a>{
         DatosDeUsuarioEnLaPlataforma { usuario, identidad_validada: false, monto_fiat: 0.0, balances: Balances::new() , transacciones: Transacciones::new() }
@@ -763,9 +771,6 @@ impl<'a> DatosDeUsuarioEnLaPlataforma<'a>{
 impl <'a> Balances<'a>{
     pub fn new() -> Balances<'a>{
         Balances{data:HashMap::new()}
-    }
-    pub fn add_criptos(&mut self, criptomonedas:&'a HashSet<Criptomoneda<'a>>, usuario:&'a User){
-        criptomonedas.iter().for_each(|c|{ self.data.insert(c, Balance::new(usuario, c, 0.0)); });        
     }
 }
 impl <'a> Balance <'a>{
@@ -778,7 +783,6 @@ impl <'a> Transacciones <'a>{
         Transacciones {data:None}
     }
 }
-// Plataforma, User, Criptomoneda, BlockChain, DatosDeUsuarioEnLaPlataforma, Balances, Balance, Transacciones
 /* 
 Implemente las estructuras, funciones asociadas y traits necesarios para resolver las
 siguientes acciones relacionadas al usuario:
@@ -839,7 +843,7 @@ impl<'a> Plataforma<'a>{
     {
         if !self.datos_usuarios.contains_key(user) { panic!("USUARIO NO REGISTRADO")} 
         let datos_user = self.datos_usuarios.get_mut(user).unwrap();
-        
+        if !datos_user.esta_validado() {return false}
         if !datos_user.tiene_al_menos(monto_de_fiat,None) {return false}
         // cotizacion_en_la_fecha_de_la_cripto (pesos) = 1 (cripto) => 
         // => monto_en_fiat (pesos) = monto_en_fiat (pesos) * 1(cripto) / cotizacion_en_la_fecha_de_la_cripto(pesos) = monto_en_cripto (cripto)
@@ -853,6 +857,9 @@ impl<'a> Plataforma<'a>{
     }
 }
 impl <'a> DatosDeUsuarioEnLaPlataforma<'a>{
+    pub fn esta_validado(&self) -> bool{
+        self.identidad_validada
+    }
     pub fn tiene_al_menos(&self, monto:f32, criptomoneda:Option<&'a Criptomoneda>) -> bool{
         if let Some(cripto) = criptomoneda {
             if let Some(balance_de_cripto) = self.balances.get(cripto) { return !(balance_de_cripto.monto<monto) } 
@@ -911,7 +918,7 @@ impl<'a> Plataforma<'a>{
     {
         if !self.datos_usuarios.contains_key(user) { panic!("USUARIO NO REGISTRADO")} 
         let datos_user = self.datos_usuarios.get_mut(user).unwrap();
-
+        if !datos_user.esta_validado() {return false}
         if !datos_user.tiene_al_menos(monto_de_cripto,Some(criptomoneda)) {return false}
         // 1 (cripto) = cotizacion_en_la_fecha_de_la_cripto (pesos) => 
         // => monto_en_cripto (pesos) = monto_en_cripto (pesos) * cotizacion_en_la_fecha_de_la_cripto(pesos) / 1(cripto) = monto_en_fiat (cripto)
@@ -961,7 +968,7 @@ impl<'a> Plataforma<'a> {
         {
         if !self.datos_usuarios.contains_key(user) { panic!("USUARIO NO REGISTRADO")} 
         let datos_user = self.datos_usuarios.get_mut(user).unwrap();
-
+        if !datos_user.esta_validado() {return false}
         if !datos_user.tiene_al_menos(monto_a_retirar_de_la_cripto,Some(criptomoneda)) {return false}
 
         datos_user.quitar_monto_cripto(criptomoneda,monto_a_retirar_de_la_cripto);
@@ -1009,7 +1016,7 @@ impl<'a> Plataforma<'a> {
         {
         if !self.datos_usuarios.contains_key(user) { panic!("USUARIO NO REGISTRADO")} 
         let datos_user = self.datos_usuarios.get_mut(user).unwrap();
-
+        if !datos_user.esta_validado() {return false}
         if !datos_user.tiene_al_menos(monto_de_fiat,None) {return false} 
 
         datos_user.retirar_dinero(monto_de_fiat);
