@@ -9,6 +9,8 @@ dependencies = [
  "cargo-tarpaulin",
  "faux",
  "random-number",
+ "serde",
+ "serde_json",
  "strum",
  "strum_macros",
 ]

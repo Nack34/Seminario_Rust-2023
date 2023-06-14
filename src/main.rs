@@ -8,7 +8,7 @@ mod test_tp2;
 mod tp3;
 mod tp4;
 mod tp5;
-mod ricciardi_nicolas_e3_no_terminado;
+mod ricciardi_nicolas_e3;
 fn main() { // tp3, fecha, es_proxima => esta mal hecho, corregir
 
 

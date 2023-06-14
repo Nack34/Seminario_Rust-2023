@@ -1,0 +1,1 @@
+[{"IngresoDeDinero":{"fecha":{"dia":1,"mes":1,"anio":2023},"usuario_id":1,"monto_de_fiat":20.0}},{"CompraDeCripto":{"fecha":{"dia":1,"mes":1,"anio":2},"usuario_id":1,"criptomoneda_id":1,"monto_de_cripto":10.0,"cotizacion_en_la_fecha_de_la_cripto":1.0}}]
